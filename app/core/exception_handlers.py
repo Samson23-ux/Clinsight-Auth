@@ -5,7 +5,6 @@ from app.core.exceptions import (
     ServerError,
     AppException,
     UserNotFoundError,
-    AuthorizationError,
     AuthenticationError,
     create_exception_handler
 )
@@ -34,18 +33,6 @@ class ExceptionHandlers:
                 initial_detail={
                     "status": "error",
                     "message": "User is not authenticated",
-                },
-            ),
-        )
-
-
-        self.app.add_exception_handler(
-            exc_class_or_status_code=AuthorizationError,
-            handler=create_exception_handler(
-                status_code=403,
-                initial_detail={
-                    "status": "error",
-                    "message": "User is not authorized to make the requested action",
                 },
             ),
         )

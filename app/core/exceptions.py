@@ -15,15 +15,8 @@ class ServerError(AppException):
     pass
 
 
-
 class AuthenticationError(AppException):
     """User not authenticated"""
-
-    pass
-
-
-class AuthorizationError(AppException):
-    """User not authorized"""
 
     pass
 
