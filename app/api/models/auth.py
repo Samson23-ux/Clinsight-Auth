@@ -1,4 +1,5 @@
 import uuid
+from uuid6 import uuid7
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
@@ -19,7 +20,7 @@ class AuthOtp(Base):
     __tablename__ = "otp"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID, server_default=text("uuid_generate_v7()")
+        UUID, default=uuid7()
     )
     otp: Mapped[str] = mapped_column(VARCHAR)
     user_id: Mapped[uuid.UUID] = mapped_column(

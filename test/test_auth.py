@@ -4,54 +4,18 @@ from unittest.mock import patch, AsyncMock
 
 
 @pytest.mark.asyncio
-async def test_sign_up_with_email(async_client: AsyncClient):
-    path: str = "app.api.services.user_service.send_email.delay"
+async def test_sign_up_with_email(create_user: Response):
+    json_res = create_user.json()
 
-    sign_up_payload: dict = {
-        "email": "test_user_email",
-        "password": "test_user_password",
-        "last_name": "test_user_last_name",
-        "first_name": "test_user_first_name",
-    }
-
-    with patch(path, new_callable=AsyncMock) as email_patch:
-        res: Response = await async_client.post(
-            "/auth/signup",
-            json=sign_up_payload,
-            headers={"x-api-version": "1"},
-        )
-
-    json_res = res.json()
-
-    email_patch.assert_called_once()
-
-    assert res.status_code == 201
+    assert create_user.status_code == 201
     assert json_res["status"] == "success"
 
 
 @pytest.mark.asyncio
-async def test_verify_email(async_client: AsyncClient):
-    path: str = "app.api.services.user_service.verify_otp"
+async def test_verify_email(verify_user: Response):
+    json_res = verify_user.json()
 
-    otp_payload: dict = {
-        "email": "test_user_email",
-        "otp_code": "test_otp_token",
-    }
-
-    with patch(path, new_callable=AsyncMock) as otp_patch:
-        otp_patch.return_value = True
-
-        res: Response = await async_client.post(
-            "/auth/verify",
-            json=otp_payload,
-            headers={"x-api-version": "1"},
-        )
-
-    json_res = res.json()
-
-    otp_patch.assert_awaited_once()
-
-    assert res.status_code == 201
+    assert verify_user.status_code == 201
     assert json_res["status"] == "success"
 
 
@@ -79,7 +43,7 @@ async def test_resend_otp_token(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login(async_client: AsyncClient):
+async def test_login(async_client: AsyncClient, verify_user: Response):
     login_payload: dict = {
         "email": "test_user_email",
         "password": "test_user_password",
@@ -154,7 +118,7 @@ async def test_google_callback(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_current_user(async_client: AsyncClient):
+async def test_get_current_user(async_client: AsyncClient, verify_user: Response):
     login_payload: dict = {
         "email": "test_user_email",
         "password": "test_user_password",
@@ -187,6 +151,29 @@ async def test_unauthenticated_user(async_client: AsyncClient):
     )
 
     assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_access_token(async_client: AsyncClient, verify_user: Response):
+    login_payload: dict = {
+        "email": "test_user_email",
+        "password": "test_user_password",
+    }
+
+    await async_client.post(
+        "/auth/login",
+        json=login_payload,
+        headers={"x-api-version": "1"},
+    )
+
+    res = await async_client.get(
+        "/auth/refresh",
+        headers={"x-api-version": "1"},
+    )
+    json_res = res.json()
+
+    assert res.status_code == 201
+    assert "access_token" in json_res
 
 
 @pytest.mark.asyncio

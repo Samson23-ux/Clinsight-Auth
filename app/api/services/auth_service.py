@@ -1,10 +1,13 @@
 import json
+from uuid import uuid4, UUID
 from redis.asyncio import Redis
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from app.core.config import settings
 from app.api.models.auth import AuthOtp
+from app.tasks.celery_task import send_email
 from app.api.repo.auth_repo import auth_repo_v1
 from app.api.models.users import User, GoogleUser
 from app.api.services.user_service import user_service_v1
@@ -52,6 +55,23 @@ class AuthServiceV1:
 
         return access_token, refresh_token
 
+    def _get_verification_code(self, email_id: str, redis_db: Redis) -> dict:
+        code: str | None = auth_repo_v1.get_verification_code(email_id, redis_db)
+
+        if code:
+            return json.loads(code)
+        return None
+
+    def _create_email_code(
+        self, email_id: str, payload: dict, exp: int, redis_db: Redis
+    ):
+        auth_repo_v1.store_email_code(
+            email_id, json.dumps(payload), exp, redis_db
+        )
+
+    def _create_auth_otp(self, otp: AuthOtp, session: Session):
+        auth_repo_v1.add_otp_to_db(otp, session)
+
     async def sign_up_with_email(
         self, user_create: UserCreateV1, session: AsyncSession
     ) -> str:
@@ -87,7 +107,8 @@ class AuthServiceV1:
                 await session.rollback()
                 raise ServerError() from e
 
-            #### send email ###
+            email_id: UUID = uuid4()
+            send_email.delay(email_id, user_email, user_db.id)
 
         return user_email
 
@@ -150,17 +171,19 @@ class AuthServiceV1:
         user: UserOutV1 = UserOutV1.model_validate(user)
         return user
 
-    async def create_new_token(
-        self, refresh_token: str, redis_db: Redis
-    ) -> tuple[str]:
-        refresh_token: dict = await decode_token(refresh_token, settings.REFRESH_TOKEN_SECRET_KEY)
+    async def create_new_token(self, refresh_token: str, redis_db: Redis) -> tuple[str]:
+        refresh_token: dict = await decode_token(
+            refresh_token, settings.REFRESH_TOKEN_SECRET_KEY
+        )
 
         if not refresh_token:
             raise AuthenticationError()
 
         refresh_token_id: str = refresh_token["jti"]
 
-        refresh_token_db: str = await auth_repo_v1.get_auth_token(refresh_token_id, redis_db)
+        refresh_token_db: str = await auth_repo_v1.get_auth_token(
+            refresh_token_id, redis_db
+        )
 
         if not refresh_token_db:
             raise AuthenticationError()
@@ -220,7 +243,8 @@ class AuthServiceV1:
             if otp_db:
                 await auth_repo_v1.delete_otp_token(otp_db, session)
 
-            #### send email ####
+            email_id: UUID = uuid4()
+            send_email.delay(email_id, user.email, user.id)
         except Exception as e:
             await session.rollback()
             raise ServerError() from e

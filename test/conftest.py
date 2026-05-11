@@ -1,8 +1,8 @@
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.pool import NullPool
-from httpx import AsyncClient, ASGITransport
-# from unittest.mock import patch, AsyncMock, Mock
+from httpx import AsyncClient, ASGITransport, Response
+from unittest.mock import patch, AsyncMock
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -96,3 +96,48 @@ async def async_client(async_session: AsyncSession):
         transport=ASGITransport(app), base_url="http://localhost/api"
     ) as client:
         yield client
+
+@pytest_asyncio.fixture
+async def create_user(async_client: AsyncClient):
+    path: str = "app.api.services.user_service.send_email.delay"
+
+    sign_up_payload: dict = {
+        "email": "test_user_email",
+        "password": "test_user_password",
+        "last_name": "test_user_last_name",
+        "first_name": "test_user_first_name",
+    }
+
+    with patch(path, new_callable=AsyncMock) as email_patch:
+        res: Response = await async_client.post(
+            "/auth/signup",
+            json=sign_up_payload,
+            headers={"x-api-version": "1"},
+        )
+
+    email_patch.assert_called_once()
+
+    return res
+
+
+@pytest_asyncio.fixture
+async def verify_user(async_client: AsyncClient, create_user: Response):
+    path: str = "app.api.services.user_service.verify_otp"
+
+    otp_payload: dict = {
+        "email": "test_user_email",
+        "otp_code": "test_otp_token",
+    }
+
+    with patch(path, new_callable=AsyncMock) as otp_patch:
+        otp_patch.return_value = True
+
+        res: Response = await async_client.post(
+            "/auth/verify",
+            json=otp_payload,
+            headers={"x-api-version": "1"},
+        )
+
+    otp_patch.assert_awaited_once()
+
+    return res

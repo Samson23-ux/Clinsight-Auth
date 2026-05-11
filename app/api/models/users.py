@@ -1,4 +1,5 @@
 import uuid
+from uuid6 import uuid7
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
@@ -20,7 +21,7 @@ from app.database.base import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, server_default=text("uuid_generate_v7()"))
+    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid7())
     first_name: Mapped[str] = mapped_column(VARCHAR)
     last_name: Mapped[str] = mapped_column(VARCHAR)
     email: Mapped[str] = mapped_column(VARCHAR, unique=True)

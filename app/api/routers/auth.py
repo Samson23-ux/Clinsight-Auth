@@ -188,8 +188,12 @@ async def resend_otp(
 async def create_new_token(
     request: Request,
     response: Response,
+    x_api_version: Annotated[str, Header()],
     redis_db: Annotated[Redis, Depends(get_redis_db)],
 ):
+    if not x_api_version:
+        raise VersionError()
+
     refresh_token: str = request.cookies.get("refresh_token")
     access_token, refresh_token = await auth_service_v1.create_new_token(
         refresh_token, redis_db

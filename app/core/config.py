@@ -43,4 +43,11 @@ class Settings(BaseSettings):
     # redis
     REDIS_URL: str
 
+    # email creds
+    API_EMAIL: str
+    API_EMAIL_PASSWORD: str
+
+    # SMTP
+    SMTP_PORT: int = 465
+
 settings: Settings = Settings()
