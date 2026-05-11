@@ -125,7 +125,8 @@ async def test_google_callback(async_client: AsyncClient):
     payload: dict = {
         "sub": "randomfakeid",
         "email": "test_user_email",
-        "email_verified": True,
+        "given_name": "test_first_name",
+        "family_name": "test_last_name"
     }
 
     payload_path: str = "app.api.services.auth_service.decode_id_token"

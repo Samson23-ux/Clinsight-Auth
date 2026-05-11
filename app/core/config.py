@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     # test db
     ASYNC_TEST_DB_URL: str
 
+    # Argon2
+    ARGON2_PASSWORD_PEPPER: str
+    ARGON2_EMAIL_CODE_PEPPER: str
+
+    # OAuth2
+    CLIENT_ID: str
+    CLIENT_SECRET: str
+    OAUTH2_ALGORITHM: str = "RS256"
+
     # JWT
     JWT_ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_TIME: int

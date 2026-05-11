@@ -1,13 +1,4 @@
-import enum
-from uuid import UUID
 from pydantic import BaseModel
-from datetime import datetime, timezone
-
-
-class TokenStatus(str, enum.Enum):
-    VALID: str = "valid"
-    REVOKED: str = "revoked"
-    USED: str = "used"
 
 
 class TokenDataV1(BaseModel):
@@ -18,11 +9,36 @@ class TokenV1(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class EmailVerifyV1(BaseModel):
+    email: str
+    otp_token: str
 
-class RefreshToken(BaseModel):
-    id: UUID
-    token: str
-    user_email: UUID
-    status: TokenStatus
-    expires_at: datetime
-    created_at: datetime = datetime.now(timezone.utc)
+
+class ResendOtpV1(BaseModel):
+    email: str
+
+
+class EmailLoginV1(BaseModel):
+    email: str
+    password: str
+
+
+class BaseResponseV1(BaseModel):
+    message: str
+    status: str = "success"
+
+
+class SignUpResponseV1(BaseResponseV1):
+    email: str
+
+
+class VerifyResponseV1(BaseResponseV1):
+    pass
+
+
+class LogoutResponseV1(BaseResponseV1):
+    pass
+
+
+class OtpResendResponseV1(BaseResponseV1):
+    pass
