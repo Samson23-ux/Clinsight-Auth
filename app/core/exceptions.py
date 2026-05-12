@@ -42,13 +42,6 @@ class UserNotFoundError(AppException):
 
     pass
 
-class GoogleUserNotFoundError(AppException):
-    """Google user not found"""
-    def __init__(self, user_id: str):
-        self.user_id = user_id
-
-    pass
-
 
 class CredentialError(AppException):
     """wrong credentials provided"""

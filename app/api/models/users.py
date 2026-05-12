@@ -3,7 +3,6 @@ from uuid6 import uuid7
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
-    text,
     func,
     UUID,
     Text,
@@ -51,6 +50,6 @@ class GoogleUser(Base):
     )
 
     __table_args__ = (
-        Index("idx_users_email", email),
+        Index("idx_google_users_id", user_id),
         PrimaryKeyConstraint("user_id", name="google_users_id_pk"),
     )

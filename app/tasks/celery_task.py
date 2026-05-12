@@ -13,7 +13,6 @@ from datetime import datetime, timezone, timedelta
 from app.core.config import settings
 from app.api.models.auth import AuthOtp
 from app.tasks.celery_app import celery_app
-from app.api.services.auth_service import auth_service_v1
 
 
 db_engine: Engine = create_engine(
@@ -60,6 +59,7 @@ class BaseTaskWithFailure(celery_app.Task):
 
 @celery_app.task(base=BaseTaskWithFailure)
 def send_email(email_id: str, user_email: str, user_id: UUID):
+    from app.api.services.auth_service import auth_service_v1
     try:
         session: Session = db_session()
         redis_client: Redis = Redis(settings.REDIS_URL)

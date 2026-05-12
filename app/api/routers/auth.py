@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import APIRouter, Depends, Header, Request, Response
 
 
+from app.limiter import limiter
 from app.core.security import oauth
 from app.core.config import settings
 from app.api.models.users import User
@@ -33,6 +34,7 @@ auth_router_v1 = APIRouter()
     description="Sign up with email and password",
     response_model=SignUpResponseV1,
 )
+@limiter.limit("3/5minutes")
 async def sign_up_with_email(
     request: Request,
     user_create: UserCreateV1,
@@ -54,6 +56,7 @@ async def sign_up_with_email(
     status_code=302,
     description="Sign up with google",
 )
+@limiter.limit("3/5minutes")
 async def sign_up_with_google(
     request: Request,
     x_api_version: Annotated[str, Header()],
@@ -71,6 +74,7 @@ async def sign_up_with_google(
     description="Google callback",
     response_model=TokenV1,
 )
+@limiter.limit("3/5minutes")
 async def google_callback(
     request: Request,
     response: Response,
@@ -105,6 +109,7 @@ async def google_callback(
     description="Verify email address",
     response_model=VerifyResponseV1,
 )
+@limiter.limit("3/5minutes")
 async def verify_email(
     request: Request,
     email_verify: EmailVerifyV1,
@@ -126,6 +131,7 @@ async def verify_email(
     description="Verify email address",
     response_model=TokenV1,
 )
+@limiter.limit("3/5minutes")
 async def login(
     request: Request,
     response: Response,
@@ -163,6 +169,7 @@ async def login(
     description="Resend verification code",
     response_model=OtpResendResponseV1,
 )
+@limiter.limit("3/5minutes")
 async def resend_otp(
     request: Request,
     otp_resend: ResendOtpV1,
@@ -184,7 +191,7 @@ async def resend_otp(
     response_model=TokenV1,
     description="Create new access token for user with a valid refresh token",
 )
-# @limiter.limit("3/5minutes")
+@limiter.limit("3/5minutes")
 async def create_new_token(
     request: Request,
     response: Response,
@@ -213,10 +220,11 @@ async def create_new_token(
 
 @auth_router_v1.get(
     "/auth/me",
-    status_code=201,
+    status_code=200,
     description="Get current active user",
     response_model=UserResponseV1,
 )
+@limiter.limit("3/5minutes")
 async def get_current_user(
     request: Request,
     x_api_version: Annotated[str, Header()],
@@ -235,6 +243,7 @@ async def get_current_user(
     description="Logout account",
     response_model=LogoutResponseV1,
 )
+@limiter.limit("3/5minutes")
 async def logout(
     request: Request,
     x_api_version: Annotated[str, Header()],

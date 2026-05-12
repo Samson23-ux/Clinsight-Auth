@@ -1,4 +1,3 @@
-import httpx
 from uuid import UUID
 from typing import Annotated
 from redis.asyncio import Redis
@@ -23,12 +22,12 @@ async def get_session():
         session: AsyncSession = async_session()
         yield session
     finally:
-        await session.close()
+        await session.aclose()
 
 
 async def get_redis_db():
     try:
-        redis_client: Redis = Redis(settings.REDIS_URL)
+        redis_client = Redis.from_url(settings.REDIS_URL)
         yield redis_client
     finally:
         await redis_client.close()
@@ -37,7 +36,6 @@ async def get_redis_db():
 async def get_current_user(
     request: Request,
     token: Annotated[OAuth2PasswordBearer, Depends(bearer_scheme)],
-    redis_db: Annotated[Redis, Depends(get_redis_db)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     key: str = settings.ACCESS_TOKEN_SECRET_KEY

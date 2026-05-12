@@ -50,4 +50,7 @@ class Settings(BaseSettings):
     # SMTP
     SMTP_PORT: int = 465
 
+    # RabbitMQ
+    API_BROKER: str
+
 settings: Settings = Settings()

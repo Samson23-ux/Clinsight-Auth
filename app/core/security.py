@@ -93,7 +93,7 @@ async def create_refresh_token(
     return token, payload["jti"], expire_time
 
 
-async def prepare_tokens(user_email: str, token_data: TokenDataV1) -> dict:
+async def prepare_tokens(token_data: TokenDataV1) -> dict:
     access_token: str = await create_access_token(
         token_data
     )
@@ -109,7 +109,7 @@ async def prepare_tokens(user_email: str, token_data: TokenDataV1) -> dict:
     refresh_token_data: dict = {
         "refresh_token": refresh_token,
         "refresh_token_id": refresh_token_id,
-        "refresh_token_exp": refresh_token_exp,
+        "refresh_token_exp": refresh_token_exp.isoformat(),
     }
 
     data: dict = {
@@ -128,7 +128,7 @@ async def decode_token(token: str, key: str):
         return payload
     except JWTError:
         return None
-    
+
 
 async def decode_id_token(token: str) -> dict | None:
     try:
@@ -142,5 +142,5 @@ async def decode_id_token(token: str) -> dict | None:
             audience=settings.CLIENT_ID,
         )
         return payload
-    except JWTError as e:
+    except JWTError:
         return None

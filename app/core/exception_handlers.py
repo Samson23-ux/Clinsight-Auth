@@ -10,7 +10,6 @@ from app.core.exceptions import (
     UserExistsError,
     UserNotFoundError,
     AuthenticationError,
-    GoogleUserNotFoundError,
     create_exception_handler
 )
 
@@ -49,17 +48,6 @@ class ExceptionHandlers:
                 initial_detail={
                     "status": "error",
                     "message": "User not found with email {user_email}",
-                },
-            ),
-        )
-
-        self.app.add_exception_handler(
-            exc_class_or_status_code=GoogleUserNotFoundError,
-            handler=create_exception_handler(
-                status_code=404,
-                initial_detail={
-                    "status": "error",
-                    "message": "User not found with id {user_id}",
                 },
             ),
         )

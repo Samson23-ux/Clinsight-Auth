@@ -1,5 +1,4 @@
 import pytest_asyncio
-from sqlalchemy import text
 from sqlalchemy.pool import NullPool
 from httpx import AsyncClient, ASGITransport, Response
 from unittest.mock import patch, AsyncMock
@@ -16,43 +15,17 @@ from sqlalchemy.ext.asyncio import (
 from app.main import app
 from app.database.base import Base
 from app.core.config import settings
-from app.api.models.users import User  #noqa: F401
+from app.api import models  # noqa: F401
 from app.dependencies import get_session
-
-BASE_PATH: str = "app.api.services.auth_service"
 
 
 @pytest_asyncio.fixture(scope="session")
 async def async_engine():
-    sql_stmt: str = """
-        CREATE OR REPLACE FUNCTION uuid_generate_v7()
-               RETURNS UUID
-               LANGUAGE SQL
-               VOLATILE
-               AS $$
-                SELECT encode(
-                    set_bit(
-                        set_bit(
-                            overlay(
-                                uuid_send(gen_random_uuid())
-                                placing substring(int8send(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint) FROM 3)
-                                FROM 1 FOR 6
-                            ),
-                            52, 1
-                        ),
-                        53, 1
-                    ),
-                    'hex'
-                )::uuid
-               $$;
-    """
     async_db_engine: AsyncEngine = create_async_engine(
         url=settings.ASYNC_TEST_DB_URL, poolclass=NullPool
     )
 
     async with async_db_engine.begin() as conn:
-        await conn.execute(text(sql_stmt))
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
         await conn.run_sync(Base.metadata.create_all)
 
     yield async_db_engine
@@ -97,12 +70,13 @@ async def async_client(async_session: AsyncSession):
     ) as client:
         yield client
 
+
 @pytest_asyncio.fixture
 async def create_user(async_client: AsyncClient):
-    path: str = "app.api.services.user_service.send_email.delay"
+    path: str = "app.api.services.auth_service.send_email.delay"
 
     sign_up_payload: dict = {
-        "email": "test_user_email",
+        "email": "user@example.com",
         "password": "test_user_password",
         "last_name": "test_user_last_name",
         "first_name": "test_user_first_name",
@@ -112,7 +86,7 @@ async def create_user(async_client: AsyncClient):
         res: Response = await async_client.post(
             "/auth/signup",
             json=sign_up_payload,
-            headers={"x-api-version": "1"},
+            headers={"x-api-version": "1", "env": "test"},
         )
 
     email_patch.assert_called_once()
@@ -122,22 +96,29 @@ async def create_user(async_client: AsyncClient):
 
 @pytest_asyncio.fixture
 async def verify_user(async_client: AsyncClient, create_user: Response):
-    path: str = "app.api.services.user_service.verify_otp"
+    otp_path: str = "app.api.services.auth_service.auth_repo_v1.get_email_otp"
+    delete_path: str = "app.api.services.auth_service.auth_repo_v1.delete_otp_token"
 
     otp_payload: dict = {
-        "email": "test_user_email",
-        "otp_code": "test_otp_token",
+        "email": "user@example.com",
+        "otp_token": "test_otp_token",
     }
 
-    with patch(path, new_callable=AsyncMock) as otp_patch:
-        otp_patch.return_value = True
+    otp_patch: AsyncMock = patch(otp_path, new_callable=AsyncMock).start()
+    delete_patch: AsyncMock = patch(delete_path, new_callable=AsyncMock).start()
 
-        res: Response = await async_client.post(
-            "/auth/verify",
-            json=otp_payload,
-            headers={"x-api-version": "1"},
-        )
+    otp_patch.return_value = "test_otp_token"
+
+    res: Response = await async_client.post(
+        "/auth/verify",
+        json=otp_payload,
+        headers={"x-api-version": "1", "env": "test"},
+    )
+
+    otp_patch.start()
+    delete_patch.start()
 
     otp_patch.assert_awaited_once()
+    delete_patch.assert_awaited_once()
 
     return res

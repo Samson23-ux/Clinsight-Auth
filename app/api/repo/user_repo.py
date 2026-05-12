@@ -6,8 +6,16 @@ from app.api.models.users import User, GoogleUser
 
 
 class UserRepoV1:
-    async def get_user_by_email(self, email: str, session: AsyncSession) -> User | None:
-        stmt = select(User).where(User.email == email, User.is_active.is_(True))
+    async def get_user(self, email: str, session: AsyncSession) -> User | None:
+        stmt = select(User).where(User.email == email, User.is_verified.is_(True))
+
+        res = await session.execute(stmt)
+        user: User | None = res.scalar()
+
+        return user
+
+    async def get_unverified_user(self, email: str, session: AsyncSession) -> User | None:
+        stmt = select(User).where(User.email == email)
 
         res = await session.execute(stmt)
         user: User | None = res.scalar()

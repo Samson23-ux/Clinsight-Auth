@@ -25,6 +25,7 @@ from app.core.exceptions import (
     UserExistsError,
     CredentialError,
     InvalidOtpError,
+    UserNotFoundError,
     AuthenticationError,
 )
 
@@ -33,7 +34,7 @@ class AuthServiceV1:
     async def _get_tokens(self, user_email: str, redis_db: Redis) -> tuple:
         token_data: TokenDataV1 = TokenDataV1(email=user_email)
 
-        data: dict = await prepare_tokens(user_email, token_data)
+        data: dict = await prepare_tokens(token_data)
 
         access_token_data: dict = data["access_token_data"]
         refresh_token_data: dict = data["refresh_token_data"]
@@ -44,12 +45,11 @@ class AuthServiceV1:
         refresh_token: str = refresh_token_data["refresh_token"]
 
         refresh_token_id: str = refresh_token_data["refresh_token_id"]
-        refresh_token_exp: str = refresh_token_data["refresh_token_exp"]
 
         await auth_repo_v1.store_token(
             refresh_token_id,
             json.dumps(refresh_token_data),
-            refresh_token_exp,
+            settings.REFRESH_TOKEN_EXPIRE_TIME,
             redis_db,
         )
 
@@ -65,9 +65,7 @@ class AuthServiceV1:
     def _create_email_code(
         self, email_id: str, payload: dict, exp: int, redis_db: Redis
     ):
-        auth_repo_v1.store_email_code(
-            email_id, json.dumps(payload), exp, redis_db
-        )
+        auth_repo_v1.store_email_code(email_id, json.dumps(payload), exp, redis_db)
 
     def _create_auth_otp(self, otp: AuthOtp, session: Session):
         auth_repo_v1.add_otp_to_db(otp, session)
@@ -91,13 +89,15 @@ class AuthServiceV1:
                 existing_user.email = user_email
                 existing_user.last_name = user_create.last_name
                 existing_user.first_name = user_create.first_name
-                existing_user.hashed_password = hash_password(existing_user.password)
+                existing_user.hashed_password = await hash_password(
+                    existing_user.hashed_password
+                )
             else:
                 raise UserExistsError(user_email)
         else:
             user_db: User = User(
                 **user_create.model_dump(exclude={"password"}),
-                hashed_password=hash_password(existing_user.password),
+                hashed_password=await hash_password(user_create.password),
             )
 
             try:
@@ -162,6 +162,12 @@ class AuthServiceV1:
 
         if user_email != user.email or not is_password:
             raise CredentialError()
+
+        try:
+            user.is_active = True
+            await user_service_v1.update_user(user, session)
+        except Exception as e:
+            raise ServerError() from e
 
         access_token, refresh_token = await self._get_tokens(user_email, redis_db)
 
@@ -234,7 +240,10 @@ class AuthServiceV1:
             raise ServerError() from e
 
     async def resend_otp(self, otp_resend: ResendOtpV1, session: AsyncSession):
-        user: User = await user_service_v1.get_curr_user(otp_resend.email, session)
+        user: User = await user_service_v1._get_user(otp_resend.email, session)
+
+        if not user:
+            raise UserNotFoundError(otp_resend.email)
 
         # check and delete for any existing otp for user
         otp_db: AuthOtp | None = await auth_repo_v1.get_existing_otp(user.id, session)

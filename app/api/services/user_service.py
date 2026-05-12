@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.repo.user_repo import user_repo_v1
 from app.api.models.users import User, GoogleUser
-from app.core.exceptions import UserNotFoundError, GoogleUserNotFoundError
+from app.core.exceptions import UserNotFoundError
 
 
 class UserServiceV1:
@@ -16,17 +16,13 @@ class UserServiceV1:
         return user
 
     async def _get_user(self, email: str, session: AsyncSession) -> User | None:
-        user: User | None = await user_repo_v1.get_user(email, session)
+        user: User | None = await user_repo_v1.get_unverified_user(email, session)
         return user
 
     async def get_google_user(
         self, user_id: str, session: AsyncSession
     ) -> GoogleUser | None:
         user: GoogleUser | None = await user_repo_v1.get_google_user(user_id, session)
-
-        if not user:
-            raise GoogleUserNotFoundError(user_id)
-
         return user
 
     async def create_user(self, user: User | GoogleUser, session: AsyncSession):
