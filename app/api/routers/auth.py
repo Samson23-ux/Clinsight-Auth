@@ -64,11 +64,11 @@ async def sign_up_with_google(
     if not x_api_version:
         raise VersionError()
 
-    redirect_uri = request.url_for("/api/auth/google/callback")
+    redirect_uri = request.url_for("google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
-@auth_router_v1.post(
+@auth_router_v1.get(
     "/auth/google/callback",
     status_code=201,
     description="Google callback",

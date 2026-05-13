@@ -31,7 +31,9 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
-ExceptionHandlers(app)
+exception_handers = ExceptionHandlers(app)
+
+exception_handers.register_exceptions()
 
 
 @app.get("/", status_code=200)

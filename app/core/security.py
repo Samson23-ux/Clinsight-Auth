@@ -22,8 +22,7 @@ oauth.register(
     client_secret=settings.CLIENT_SECRET,
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={
-        "scope": "openid email",
-        "redirect_url": "http://localhost:8000/api/v1/auth/callback",
+        "scope": "openid email profile",
     },
 )
 
@@ -70,7 +69,7 @@ async def create_refresh_token(
 ) -> tuple:
     if not expire_time:
         expire_time: datetime = datetime.now(timezone.utc) + timedelta(
-            minutes=settings.REFRESH_TOKEN_EXPIRE_TIME
+            days=settings.REFRESH_TOKEN_EXPIRE_TIME
         )
     else:
         expire_time: datetime = datetime.now(timezone.utc) + timedelta(
@@ -124,22 +123,6 @@ async def decode_token(token: str, key: str):
     try:
         payload: dict = jwt.decode(
             token=token, key=key, algorithms=[settings.JWT_ALGORITHM]
-        )
-        return payload
-    except JWTError:
-        return None
-
-
-async def decode_id_token(token: str) -> dict | None:
-    try:
-        header: dict = jwt.get_unverified_header(token)
-        key: str = header.get("kid")
-
-        payload: dict = jwt.decode(
-            token=token,
-            key=key,
-            algorithms=[settings.OAUTH2_ALGORITHM],
-            audience=settings.CLIENT_ID,
         )
         return payload
     except JWTError:

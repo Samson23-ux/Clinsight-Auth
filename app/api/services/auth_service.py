@@ -17,7 +17,6 @@ from app.core.security import (
     decode_token,
     hash_password,
     prepare_tokens,
-    decode_id_token,
     verify_password,
 )
 from app.core.exceptions import (
@@ -32,6 +31,7 @@ from app.core.exceptions import (
 
 class AuthServiceV1:
     async def _get_tokens(self, user_email: str, redis_db: Redis) -> tuple:
+        exp_time: int = 24 * 60 * 60
         token_data: TokenDataV1 = TokenDataV1(email=user_email)
 
         data: dict = await prepare_tokens(token_data)
@@ -49,7 +49,7 @@ class AuthServiceV1:
         await auth_repo_v1.store_token(
             refresh_token_id,
             json.dumps(refresh_token_data),
-            settings.REFRESH_TOKEN_EXPIRE_TIME,
+            exp_time,
             redis_db,
         )
 
@@ -68,7 +68,12 @@ class AuthServiceV1:
         auth_repo_v1.store_email_code(email_id, json.dumps(payload), exp, redis_db)
 
     def _create_auth_otp(self, otp: AuthOtp, session: Session):
-        auth_repo_v1.add_otp_to_db(otp, session)
+        try:
+            auth_repo_v1.add_otp_to_db(otp, session)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise ServerError() from e
 
     async def sign_up_with_email(
         self, user_create: UserCreateV1, session: AsyncSession
@@ -78,12 +83,10 @@ class AuthServiceV1:
         If user exists and is not verified the password is re-assigned and a new otp sent.
         Else a user exists error is raise
         """
-
         user_email: str = user_create.email
         existing_user: User | None = await user_service_v1._get_user(
             user_email, session
         )
-
         if existing_user:
             if not existing_user.is_verified:
                 existing_user.email = user_email
@@ -92,6 +95,7 @@ class AuthServiceV1:
                 existing_user.hashed_password = await hash_password(
                     existing_user.hashed_password
                 )
+                user_id: UUID = existing_user.id
             else:
                 raise UserExistsError(user_email)
         else:
@@ -102,25 +106,26 @@ class AuthServiceV1:
 
             try:
                 await user_service_v1.create_user(user_db, session)
+                user_id: UUID = user_db.id
                 await session.commit()
             except Exception as e:
                 await session.rollback()
                 raise ServerError() from e
 
-            email_id: UUID = uuid4()
-            send_email.delay(email_id, user_email, user_db.id)
+        email_id: UUID = str(uuid4())
+        send_email.delay(email_id, user_email, user_id)
 
         return user_email
 
     async def create_google_user(
         self, id_token: str, redis_db: Redis, session: AsyncSession
     ) -> tuple[str]:
-        payload: dict | None = await decode_id_token(id_token)
+        user_info: dict = id_token.get("userinfo")
 
-        user_id: str = payload.get("sub")
-        user_email: str = payload.get("email")
-        first_name: str = payload.get("given_name")
-        last_name: str = payload.get("family_name")
+        user_id: str = user_info["sub"]
+        user_email: str = user_info["email"]
+        first_name: str = user_info["given_name"]
+        last_name: str = user_info["family_name"]
 
         google_user: GoogleUser = await user_service_v1.get_google_user(
             user_id, session
@@ -166,7 +171,9 @@ class AuthServiceV1:
         try:
             user.is_active = True
             await user_service_v1.update_user(user, session)
+            await session.commit()
         except Exception as e:
+            await session.rollback()
             raise ServerError() from e
 
         access_token, refresh_token = await self._get_tokens(user_email, redis_db)
@@ -252,7 +259,7 @@ class AuthServiceV1:
             if otp_db:
                 await auth_repo_v1.delete_otp_token(otp_db, session)
 
-            email_id: UUID = uuid4()
+            email_id: UUID = str(uuid4())
             send_email.delay(email_id, user.email, user.id)
         except Exception as e:
             await session.rollback()

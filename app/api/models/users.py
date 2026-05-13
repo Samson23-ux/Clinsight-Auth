@@ -20,7 +20,7 @@ from app.database.base import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid7())
+    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid7)
     first_name: Mapped[str] = mapped_column(VARCHAR)
     last_name: Mapped[str] = mapped_column(VARCHAR)
     email: Mapped[str] = mapped_column(VARCHAR, unique=True)

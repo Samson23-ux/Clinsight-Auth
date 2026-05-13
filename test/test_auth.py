@@ -93,20 +93,16 @@ async def test_google_callback(async_client: AsyncClient):
         "family_name": "test_last_name",
     }
 
-    payload_path: str = "app.api.services.auth_service.decode_id_token"
+    token: dict = {"userinfo": payload}
+
     token_path: str = "app.api.routers.auth.oauth.google.authorize_access_token"
 
-    token_patch: AsyncMock = patch(token_path, new_callable=AsyncMock).start()
-    payload_patch: AsyncMock = patch(payload_path, new_callable=AsyncMock).start()
+    with patch(token_path, new_callable=AsyncMock) as token_patch:
+        token_patch.return_value = token
 
-    payload_patch.return_value = payload
-
-    res: Response = await async_client.post(
-        "/auth/google/callback", headers={"x-api-version": "1", "env": "test"}
-    )
-
-    token_patch.stop()
-    payload_patch.stop()
+        res: Response = await async_client.get(
+            "/auth/google/callback", headers={"x-api-version": "1", "env": "test"}
+        )
 
     json_res = res.json()
 
@@ -114,7 +110,6 @@ async def test_google_callback(async_client: AsyncClient):
     assert "access_token" in json_res
 
     token_patch.assert_called_once()
-    payload_patch.assert_awaited_once()
 
 
 @pytest.mark.asyncio

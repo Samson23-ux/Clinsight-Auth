@@ -17,7 +17,7 @@ class AuthRepoV1:
 
     async def get_email_otp(self, otp: str, session: AsyncSession) -> AuthOtp | None:
         today: datetime = datetime.now(timezone.utc)
-        stmt = select(AuthOtp).where(AuthOtp.otp == otp, AuthOtp.expires_at <= today)
+        stmt = select(AuthOtp).where(AuthOtp.otp == otp, AuthOtp.expires_at >= today)
 
         res = await session.execute(stmt)
 
@@ -29,7 +29,7 @@ class AuthRepoV1:
     ) -> AuthOtp | None:
         today: datetime = datetime.now(timezone.utc)
         stmt = select(AuthOtp).where(
-            AuthOtp.user_id == user_id, AuthOtp.expires_at <= today
+            AuthOtp.user_id == user_id, AuthOtp.expires_at >= today
         )
 
         res = await session.execute(stmt)
@@ -37,7 +37,7 @@ class AuthRepoV1:
         otp_db: AuthOtp | None = res.scalar()
         return otp_db
 
-    async def get_verification_code(self, email_id: str, redis_db: SyncRedis) -> str:
+    def get_verification_code(self, email_id: str, redis_db: SyncRedis) -> str:
         code: str | None = redis_db.get(email_id)
         return code
 
@@ -48,7 +48,7 @@ class AuthRepoV1:
     async def store_token(self, token_id: str, token: str, exp: int, redis_db: Redis):
         await redis_db.set(token_id, token, ex=exp)
 
-    async def store_email_code(self, email_id: str, code: str, exp: int, redis_db: SyncRedis):
+    def store_email_code(self, email_id: str, code: str, exp: int, redis_db: SyncRedis):
         redis_db.set(email_id, code, ex=exp)
 
     async def delete_token(self, token_id: str, redis_db: Redis):

@@ -3,7 +3,7 @@ from typing import Annotated
 from redis.asyncio import Redis
 from fastapi import Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 
 from app.core.config import settings
@@ -14,7 +14,7 @@ from app.core.exceptions import AuthenticationError
 from app.api.services.user_service import user_service_v1
 
 
-bearer_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+security = HTTPBearer()
 
 
 async def get_session():
@@ -35,9 +35,10 @@ async def get_redis_db():
 
 async def get_current_user(
     request: Request,
-    token: Annotated[OAuth2PasswordBearer, Depends(bearer_scheme)],
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
+    token: str = credentials.credentials
     key: str = settings.ACCESS_TOKEN_SECRET_KEY
     payload: dict = await decode_token(token, key)
 

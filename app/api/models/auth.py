@@ -19,7 +19,7 @@ class AuthOtp(Base):
     __tablename__ = "otp"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID, default=uuid7()
+        UUID, default=uuid7
     )
     otp: Mapped[str] = mapped_column(VARCHAR)
     user_id: Mapped[uuid.UUID] = mapped_column(

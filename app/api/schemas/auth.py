@@ -9,6 +9,7 @@ class TokenV1(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+
 class EmailVerifyV1(BaseModel):
     email: str
     otp_token: str
