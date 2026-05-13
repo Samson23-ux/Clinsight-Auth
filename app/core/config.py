@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_encoding="utf-8")
 
     # environment
-    ENVIRONMENT: str
+    ENVIRONMENT: str = "development"
 
     # api details
     API_PREFIX: str = "/api"
@@ -23,7 +23,6 @@ class Settings(BaseSettings):
 
     # Argon2
     ARGON2_PASSWORD_PEPPER: str
-    ARGON2_EMAIL_CODE_PEPPER: str
 
     # OAuth2
     CLIENT_ID: str
@@ -31,9 +30,9 @@ class Settings(BaseSettings):
     OAUTH2_ALGORITHM: str = "RS256"
 
     # JWT
-    JWT_ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_TIME: int
-    REFRESH_TOKEN_EXPIRE_TIME: int
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_TIME: int = 3
+    REFRESH_TOKEN_EXPIRE_TIME: int = 1
     ACCESS_TOKEN_SECRET_KEY: str
     REFRESH_TOKEN_SECRET_KEY: str
 
