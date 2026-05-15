@@ -1,11 +1,10 @@
-import ssl
-import smtplib
+import httpx
+import resend
 import secrets
 from uuid import UUID
 from redis import Redis
-from email.mime.text import MIMEText
 from sqlalchemy import Engine, create_engine
-from email.mime.multipart import MIMEMultipart
+from resend.exceptions import ApplicationError
 from sqlalchemy.orm import Session, sessionmaker
 from datetime import datetime, timezone, timedelta
 
@@ -31,10 +30,10 @@ db_session: Session = sessionmaker(bind=db_engine, autocommit=False, autoflush=F
 class BaseTaskWithFailure(celery_app.Task):
     # errors to retry for
     autoretry_for = (
-        smtplib.SMTPConnectError,
-        smtplib.SMTPServerDisconnected,
+        httpx.TimeoutException,
+        httpx.ConnectError,
         ConnectionError,
-        TimeoutError,
+        ApplicationError
     )
 
     # maximum retry value
@@ -71,12 +70,6 @@ def send_email(email_id: str, user_email: str, user_id: UUID):
         if not code_db:
             # create email code
             otp: str = str(secrets.randbelow(900000) + 100000)
-
-            message: MIMEMultipart = MIMEMultipart()
-
-            message["From"] = settings.API_EMAIL
-            message["To"] = user_email
-            message["Subject"] = "Email Verification Code"
 
             # HTML Text
             body: str = f"""
@@ -125,17 +118,14 @@ def send_email(email_id: str, user_email: str, user_id: UUID):
             </html>
             """
 
-            mime_text: MIMEText = MIMEText(body, "html")
+            resend.api_key = settings.RESEND_API_KEY
 
-            message.attach(mime_text)
-            context = ssl.create_default_context()
-
-            with smtplib.SMTP_SSL(
-                "smtp.gmail.com", settings.SMTP_PORT, context=context
-            ) as server:
-                text = message.as_string()
-                server.login(settings.API_EMAIL, settings.API_EMAIL_PASSWORD)
-                server.sendmail(settings.API_EMAIL, user_email, text)
+            resend.Emails.send({
+                "from": settings.API_EMAIL,
+                "to": user_email,
+                "subject": "Email Verification Code",
+                "html": body
+            })
 
             payload: dict = {"otp": otp, "email": user_email}
 

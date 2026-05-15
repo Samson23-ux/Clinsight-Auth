@@ -44,12 +44,11 @@ class Settings(BaseSettings):
 
     # email creds
     API_EMAIL: str
-    API_EMAIL_PASSWORD: str
-
-    # SMTP
-    SMTP_PORT: int = 465
 
     # RabbitMQ
     API_BROKER: str
+
+    # resend
+    RESEND_API_KEY: str
 
 settings: Settings = Settings()
